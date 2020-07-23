@@ -1,26 +1,33 @@
 use std::option::Option;
 use std::rc::Rc;
 use std::option::Option::*;
-use std::string::String;
-use std::clone::Clone;
+use std::string::{String, ToString};
 use std::fmt::{Debug, Formatter, Write, Result, Display};
 use std::result::Result::Ok;
-use std::iter::Iterator;
+use std::iter::{Iterator, Peekable, FromIterator, IntoIterator};
 use std::sync::Arc;
 use std::default::Default;
-use crate::ds::Value::Null;
+use crate::ds::Value::Undefined;
+use std::borrow::ToOwned;
+use std::slice::Iter;
+use std::prelude::v1::{Sized, Vec};
+use std::clone::Clone;
 
-#[derive(Clone)]
+pub type ft = fn(LList) -> std::result::Result<Value, String>;
+#[derive(Clone, Debug)]
 pub enum Value {
     Symbol(String),
     Int(i128),
     Float(f64),
     List(LList),
-    Null
+    ////
+    Lambda(ft),
+    Macro(ft),
+    Undefined
 }
 impl Default for Value {
     fn default() -> Self {
-        Value::Null
+        Value::Undefined
     }
 }
 impl Display for Value {
@@ -30,21 +37,23 @@ impl Display for Value {
             Value::List(v) => (v as &Display).fmt(f),
             Value::Int(v) => (v as &Display).fmt(f),
             Value::Float(v) => (v as &Display).fmt(f),
-            Value::Null => f.write_str("null")
+            Value::Undefined => f.write_str("null"),
+            Value::Lambda(F) => f.write_str("<function>"),
+            Value::Macro(F) => f.write_str("<function>"),
         }
     }
 }
-impl Debug for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        (self as &Display).fmt(f)
-    }
-}
 
+#[derive(Debug)]
 pub struct LList(Option<Arc<(Value, LList)>>);
 pub(crate) static EMPTY : LList = LList(None);
 impl LList {
     pub fn empty() -> LList {
         LList(None)
+    }
+
+    pub fn _empty() -> &'static LList {
+        &EMPTY
     }
 
     pub fn cons(&self, v: Value) -> LList {
@@ -54,25 +63,32 @@ impl LList {
         }))))
     }
 
-    fn iter(&self) -> LIterator {
+    pub fn iter(&self) -> LIterator {
         LIterator(self.clone())
     }
 
-    fn first(&self) -> Option<Value> {
+    pub fn first(&self) -> Option<Value> {
         match &self.0 {
             None => None,
             Some(ptr) => Some(ptr.0.clone()),
         }
     }
 
-    fn rest(&self) -> Option<LList> {
+    pub fn rest(&self) -> Option<LList> {
         match &self.0 {
             None => None,
             Some(ptr) => Some(ptr.1.clone()),
         }
     }
 
-    fn nth(&self, i: usize) -> Option<Value> {
+    pub fn rest_t(&self) -> LList {
+        match &self.rest() {
+            None => LList::empty(),
+            Some(ptr) => ptr.to_owned(),
+        }
+    }
+
+    pub fn nth(&self, i: usize) -> Option<Value> {
         if i == 0 {
             self.0.as_ref().map(|ptr| ptr.0.clone())
         } else {
@@ -93,7 +109,17 @@ impl Clone for LList {
     }
 }
 
-struct LIterator(LList);
+impl FromIterator<Value> for LList {
+    fn from_iter<T: IntoIterator<Item=Value>>(iter: T) -> Self {
+        let mut values = vec![];
+        for v in iter {
+            values.push(v);
+        }
+        values.iter().rev().fold(LList::empty(), |l, e| l.cons(e.to_owned()))
+    }
+}
+
+pub struct LIterator(LList);
 impl Iterator for LIterator {
     type Item = Value;
 
@@ -121,10 +147,5 @@ impl Display for LList {
         s.push(')');
         f.write_str(&*s);
         Ok(())
-    }
-}
-impl Debug for LList {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        (self as &Display).fmt(f)
     }
 }

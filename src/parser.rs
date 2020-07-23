@@ -1,6 +1,6 @@
 use std::string::{String, ToString};
 use crate::ds::{Value, LList};
-use crate::ds::Value::{Null, List, Symbol};
+use crate::ds::Value::{Undefined, List, Symbol};
 use std::iter::{IntoIterator, Iterator, Peekable};
 use std::result::Result;
 use std::result::Result::{Err, Ok};
@@ -100,7 +100,7 @@ pub fn parse_list(toks: &mut Peekable<IntoIter<Token>>) -> Result<Value, String>
                     }
                 },
                 PAREN2 => break,
-                WORD(w) => values.push(Symbol(w))
+                WORD(w) => values.push(parse_word(w)?)
             }
         }
     }

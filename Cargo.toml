@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 nodrop = "0.1.14"
+lazy_static = "1.4.0"
 rutils = {path = "../rutils"}
