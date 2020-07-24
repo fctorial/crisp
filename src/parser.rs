@@ -11,6 +11,7 @@ use std::slice::Iter;
 
 use std::borrow::ToOwned;
 use std::vec::IntoIter;
+use crate::parser::ParserError::*;
 
 #[derive(Debug)]
 pub enum Token {
@@ -73,30 +74,38 @@ pub fn read_word(chars: &mut Peekable<Iter<char>>) -> String {
     }
 }
 
-pub fn parse(toks : &mut Peekable<IntoIter<Token>>) -> Result<Value, String> {
+#[derive(Debug, Clone)]
+pub enum ParserError {
+    UnexpectedClosingParen,
+    NoTokens,
+    UnexpectedEof,
+    InvalidInteger(String),
+}
+
+pub fn parse(toks: &mut IntoIter<Token>) -> Result<Value, ParserError> {
     use Token::*;
     match toks.next() {
         Some(t) => match t {
             PAREN1 => parse_list(toks),
             WORD(w) => parse_word(w),
-            PAREN2 => Err("Unexpected ')'".to_string())
+            PAREN2 => Err(UnexpectedClosingParen)
         },
-        None => Err("no tokens".to_string())
+        None => Err(NoTokens)
     }
 }
 
-pub fn parse_list(toks: &mut Peekable<IntoIter<Token>>) -> Result<Value, String> {
+pub fn parse_list(toks: &mut IntoIter<Token>) -> Result<Value, ParserError> {
     use Token::*;
     let mut values = vec![];
     loop {
         match toks.next() {
-            None => return Err("unexpected EOF".to_string()),
+            None => return Err(UnexpectedEof),
             Some(t) => match t {
                 PAREN1 => {
                     let inner = parse_list(toks);
                     match inner {
                         Ok(v) => values.push(v),
-                        Err(s) => return Err(s)
+                        Err(e) => return Err(e)
                     }
                 },
                 PAREN2 => break,
@@ -107,7 +116,7 @@ pub fn parse_list(toks: &mut Peekable<IntoIter<Token>>) -> Result<Value, String>
     Ok(List(values.iter().rev().fold(LList::empty(), |l, e| l.cons(e.to_owned()))))
 }
 
-fn parse_word(w : String) -> Result<Value, String> {
+fn parse_word(w: String) -> Result<Value, ParserError> {
     use Value::*;
     match w.chars().next().unwrap() {
         '0'..='9' => {
@@ -119,14 +128,14 @@ fn parse_word(w : String) -> Result<Value, String> {
             }
             w.parse()
                 .map(|i| Int(i))
-                .map_err(|e| e.to_string())
+                .map_err(|e| InvalidInteger(e.to_string()))
         },
         _ => {
             match w.parse().map(|b| Bool(b)) {
                 Ok(b) => return Ok(b),
                 _ => {}
             }
-            return Ok(Symbol(w))
+            return Ok(Symbol(w));
         }
     }
 }

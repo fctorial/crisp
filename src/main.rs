@@ -1,5 +1,6 @@
 #![feature(assoc_int_consts)]
-#[allow(warnings)]
+#![feature(core_intrinsics)]
+#![allow(warnings)]
 
 mod ds;
 mod vm;
@@ -7,27 +8,46 @@ mod parser;
 
 use ds::*;
 use ds::Value::*;
-use std::string::{ToString};
+use std::string::{ToString, String};
 
 
 use std::prelude::v1::Vec;
 use std::iter::{Iterator, IntoIterator};
 use std::borrow::BorrowMut;
 use rutils::*;
-use crate::parser::{toks, parse};
-
-
-
-
+use crate::parser::{toks, parse, ParserError};
+use crate::parser::ParserError::*;
 
 use crate::vm::{eval, Bindings};
 
 use std::collections::HashMap;
+use std::result::Result::*;
+use std::intrinsics::size_of;
+use std::result::Result;
 
-fn parse_code(s : &str) -> Value {
+fn parse_exp(s: &str) -> Result<Value, ParserError> {
     let chars: Vec<char> = s.chars().collect();
     let toks = toks(chars.iter().peekable().borrow_mut());
-    parse(&mut toks.into_iter().peekable()).unwrap()
+    let mut titer = toks.into_iter();
+    parse(&mut titer)
+}
+
+fn parse_all(s: &str) -> Result<Vec<Value>, ParserError> {
+    let chars: Vec<char> = s.chars().collect();
+    let toks = toks(chars.iter().peekable().borrow_mut());
+    let mut titer = toks.into_iter();
+    let mut vs = vec![];
+    loop {
+        let exp = parse(&mut titer);
+        match exp {
+            Ok(v) => vs.push(v),
+            Err(e) => match e {
+                NoTokens => break,
+                _ => return Err(e)
+            },
+        }
+    }
+    Ok(vs)
 }
 
 fn eb() -> Bindings {
@@ -42,22 +62,36 @@ fn t_vars() {
     vbs.insert("b".to_string(), Int(2));
     lbs1.insert("b".to_string(), Int(3));
     lbs2.insert("b".to_string(), Int(4));
-    let code = parse_code("b");
 
-    let res = eval(&code, &mut vbs, &mut vec![]);
-    debug_(res);
+    if let Ok(code) = parse_exp("b") {
+        let res = eval(&code, &mut vbs, &mut vec![]);
+        debug_(res);
+    }
 }
 
 fn t_bool() {
-    let code = parse_code("\
-    (set b true)\
-    (if b 1 2)\
-    ");
     let mut vbs = eb();
-    let _res = eval(&code, &mut vbs, &mut vec![]);
-    debug_(vbs);
+    if let Ok(code) = parse_exp(CODE) {
+        let _res = eval(&code, &mut vbs, &mut vec![]);
+        debug_(vbs);
+    }
+}
+
+static CODE: &str = "\
+    (set b false)\
+    (if b 1 2)\
+    ";
+
+fn t_all() {
+    let mut vbs = eb();
+    let lr = parse_all(CODE).unwrap().iter()
+        .map(|e| {
+            eval(&e, &mut vbs, &mut vec![])
+        })
+        .last();
+    debug_(lr);
 }
 
 fn main() {
-    t_bool();
+    t_all();
 }

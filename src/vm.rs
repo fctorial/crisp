@@ -26,7 +26,7 @@ macro_rules! map (
      };
 );
 lazy_static! {
-     static ref sfs : HashMap<&'static str, fn(LList, &mut Bindings, &mut Vec<Bindings>) -> Result<Value, String>> = map!{
+     pub static ref sfs : HashMap<&'static str, fn(LList, &mut Bindings, &mut Vec<Bindings>) -> Result<Value, String>> = map!{
         "set" => Set,
         // "bindl" => BindL,
         // "lambda" => Lambda,
@@ -43,6 +43,7 @@ fn err<T>(s: &str) -> Result<T, String> {
     Err(s.to_string())
 }
 // fn _t(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {}
+
 fn If(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {
     let v = args.iter()
         .take(3)
@@ -51,14 +52,19 @@ fn If(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Va
         err("\"if\" needs at three arguments")
     } else {
         if let Bool(b) = eval(v.get(0).unwrap(), vbs, lbs_s)? {
-            eval(v.get(if b {1} else {2}).unwrap(), vbs, lbs_s)
+            eval(v.get(if b { 1 } else { 2 }).unwrap(), vbs, lbs_s)
         } else {
             err("first arg to \"if\" must evaluate to a bool")
         }
     }
 }
 
-fn Set(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {
+fn CLambda(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Result<Value, String> {
+    if let Some(largs) = args.first() {} else {}
+    Err("impl".to_string())
+}
+
+fn Set(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Result<Value, String> {
     let v = args.iter()
         .take(2)
         .collect::<Vec<Value>>();
@@ -178,4 +184,9 @@ pub fn execute(exp: &LList, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Re
     }
 }
 
-fn Print(_args: LList, _vbs : &mut Bindings, _lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {err("")}
+fn Print(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Result<Value, String> {
+    let exp = args.first().unwrap();
+    let res = eval(&exp, vbs, lbs_s)?;
+    println!("{}", res);
+    Ok(res)
+}

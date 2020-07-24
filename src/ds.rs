@@ -18,13 +18,13 @@ pub type ft = fn(LList) -> std::result::Result<Value, String>;
 pub enum Value {
     Symbol(String),
     Bool(bool),
-    Int(i128),
+    Int(i64),
     Float(f64),
     List(LList),
     ////
     Lambda(ft),
     Macro(ft),
-    Undefined
+    Undefined,
 }
 impl Default for Value {
     fn default() -> Self {
