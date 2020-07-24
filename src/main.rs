@@ -1,4 +1,5 @@
 #![feature(assoc_int_consts)]
+#[allow(warnings)]
 
 mod ds;
 mod vm;
