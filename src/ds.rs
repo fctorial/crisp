@@ -1,16 +1,16 @@
 use std::option::Option;
-use std::rc::Rc;
+
 use std::option::Option::*;
-use std::string::{String, ToString};
+use std::string::{String};
 use std::fmt::{Debug, Formatter, Write, Result, Display};
 use std::result::Result::Ok;
-use std::iter::{Iterator, Peekable, FromIterator, IntoIterator};
+use std::iter::{Iterator, FromIterator, IntoIterator};
 use std::sync::Arc;
 use std::default::Default;
-use crate::ds::Value::Undefined;
+
 use std::borrow::ToOwned;
-use std::slice::Iter;
-use std::prelude::v1::{Sized, Vec};
+
+
 use std::clone::Clone;
 
 pub type ft = fn(LList) -> std::result::Result<Value, String>;
@@ -36,12 +36,12 @@ impl Display for Value {
         match self {
             Value::Symbol(name) => f.write_str(format!("{}", name).as_str()),
             Value::Bool(b) => f.write_str(if *b {"true"} else {"false"}),
-            Value::List(v) => (v as &Display).fmt(f),
-            Value::Int(v) => (v as &Display).fmt(f),
-            Value::Float(v) => (v as &Display).fmt(f),
+            Value::List(v) => (v as &dyn Display).fmt(f),
+            Value::Int(v) => (v as &dyn Display).fmt(f),
+            Value::Float(v) => (v as &dyn Display).fmt(f),
             Value::Undefined => f.write_str("null"),
-            Value::Lambda(F) => f.write_str("<function>"),
-            Value::Macro(F) => f.write_str("<function>"),
+            Value::Lambda(_F) => f.write_str("<function>"),
+            Value::Macro(_F) => f.write_str("<function>"),
         }
     }
 }

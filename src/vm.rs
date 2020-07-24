@@ -1,13 +1,13 @@
 use crate::ds::*;
 use std::collections::HashMap;
-use std::ops::Fn;
+
 use std::option::Option::*;
 use std::string::{String, ToString};
 use std::result::Result;
 use std::result::Result::*;
-use rutils::fail;
+
 use lazy_static::lazy_static;
-use crate::ds::Value::{Undefined, Symbol, List, Macro, Lambda, Bool};
+use crate::ds::Value::{Symbol, List, Macro, Lambda, Bool};
 use std::iter::{Iterator, IntoIterator};
 use std::clone::Clone;
 use std::prelude::v1::Vec;
@@ -124,7 +124,7 @@ pub fn eval(v: &Value, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Result<
         Symbol(w) => {
             let local = lbs_s.iter().rev()
                 .map(|lbs| lbs.get(w))
-                .filter(|r| if let Some(v) = r { true } else { false })
+                .filter(|r| if let Some(_v) = r { true } else { false })
                 .next()
                 .map(|o| o.unwrap());
             match local {
@@ -178,4 +178,4 @@ pub fn execute(exp: &LList, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Re
     }
 }
 
-fn Print(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {err("")}
+fn Print(_args: LList, _vbs : &mut Bindings, _lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {err("")}

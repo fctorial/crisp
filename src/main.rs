@@ -6,26 +6,26 @@ mod parser;
 
 use ds::*;
 use ds::Value::*;
-use std::string::{ToString, String};
-use std::collections::hash_map::DefaultHasher;
-use std::default::Default;
+use std::string::{ToString};
+
+
 use std::prelude::v1::Vec;
 use std::iter::{Iterator, IntoIterator};
 use std::borrow::BorrowMut;
 use rutils::*;
-use crate::parser::{toks, Token, parse_list, parse};
-use std::slice::{Iter, IterMut};
-use std::option::Option;
-use std::result::Result;
-use std::result::Result::Err;
-use std::convert::AsRef;
+use crate::parser::{toks, parse};
+
+
+
+
+
 use crate::vm::{eval, Bindings};
-use std::clone::Clone;
+
 use std::collections::HashMap;
 
 fn parse_code(s : &str) -> Value {
     let chars: Vec<char> = s.chars().collect();
-    let mut toks = toks(chars.iter().peekable().borrow_mut());
+    let toks = toks(chars.iter().peekable().borrow_mut());
     parse(&mut toks.into_iter().peekable()).unwrap()
 }
 
@@ -53,7 +53,7 @@ fn t_bool() {
     (if b 1 2)\
     ");
     let mut vbs = eb();
-    let res = eval(&code, &mut vbs, &mut vec![]);
+    let _res = eval(&code, &mut vbs, &mut vec![]);
     debug_(vbs);
 }
 

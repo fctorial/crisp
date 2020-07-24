@@ -1,14 +1,14 @@
 use std::string::{String, ToString};
 use crate::ds::{Value, LList};
 use crate::ds::Value::{Undefined, List, Symbol};
-use std::iter::{IntoIterator, Iterator, Peekable};
+use std::iter::{Iterator, Peekable};
 use std::result::Result;
 use std::result::Result::{Err, Ok};
 use std::option::Option::{Some, None};
 use std::prelude::v1::Vec;
-use std::option::Option;
+
 use std::slice::Iter;
-use rutils::debug;
+
 use std::borrow::ToOwned;
 use std::vec::IntoIter;
 
