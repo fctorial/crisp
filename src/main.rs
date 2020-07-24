@@ -92,6 +92,20 @@ fn t_all() {
     debug_(lr);
 }
 
+fn t_bind() {
+    let code = "\
+    (bindl ((a 1)\
+            (b a))\
+        b)\
+     ";
+    let res = parse_all(code).unwrap().iter()
+        .map(|e| {
+            eval(&e, &mut eb(), &mut vec![])
+        })
+        .last();
+    debug_(res);
+}
+
 fn main() {
-    t_all();
+    t_bind();
 }

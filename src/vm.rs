@@ -7,7 +7,7 @@ use std::result::Result;
 use std::result::Result::*;
 
 use lazy_static::lazy_static;
-use crate::ds::Value::{Symbol, List, Macro, Lambda, Bool};
+use crate::ds::Value::{Symbol, List, Macro, Lambda, Bool, Int};
 use std::iter::{Iterator, IntoIterator};
 use std::clone::Clone;
 use std::prelude::v1::Vec;
@@ -28,7 +28,7 @@ macro_rules! map (
 lazy_static! {
      pub static ref sfs : HashMap<&'static str, fn(LList, &mut Bindings, &mut Vec<Bindings>) -> Result<Value, String>> = map!{
         "set" => Set,
-        // "bindl" => BindL,
+        "bindl" => BindL,
         // "lambda" => Lambda,
         // "macro" => Macro
         // "do" => Do,
@@ -42,7 +42,50 @@ lazy_static! {
 fn err<T>(s: &str) -> Result<T, String> {
     Err(s.to_string())
 }
+
 // fn _t(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {}
+fn BindL(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<Bindings>) -> Result<Value, String> {
+    if let Some(List(bs)) = args.first() {
+        let body = args.rest_t();
+        if let None = body.rest() {
+            return err("bindl error 5")
+        }
+        lbs_s.push(HashMap::new());
+        for bv in bs.iter() {
+            if let List(b) = bv {
+                let vs = b.iter()
+                    .take(2)
+                    .collect::<Vec<Value>>();
+                let sym = &vs[0];
+                let value_exp = &vs[1];
+                if let Symbol(_) = &sym {
+                    match eval(&value_exp, vbs, lbs_s) {
+                        Ok(value) => {
+                            let mut lbs = lbs_s.pop().unwrap();
+                            lbs.insert(sym.to_string(), value);
+                            lbs_s.push(lbs);
+                        },
+                        Err(s) => return Err(s),
+                    }
+                } else {
+                    return err("bindl error 2")
+                }
+            } else {
+                return err("bindl error 3")
+            }
+        }
+        let mut last = Int(74);
+        for exp in body.iter() {
+            match eval(&exp, vbs, lbs_s) {
+                Ok(r) => last = r,
+                Err(e) => return Err(e),
+            }
+        }
+        return Ok(last);
+    } else {
+        err("bindl error1")
+    }
+}
 
 fn If(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<Bindings>) -> Result<Value, String> {
     let v = args.iter()
