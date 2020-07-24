@@ -18,12 +18,14 @@ use rutils::*;
 use crate::parser::{toks, parse, ParserError};
 use crate::parser::ParserError::*;
 
-use crate::vm::{eval, Bindings};
+use crate::vm::{eval, Bindings, Set};
 
 use std::collections::HashMap;
 use std::result::Result::*;
 use std::intrinsics::size_of;
 use std::result::Result;
+use std::time::SystemTime;
+use std::option::Option::{Some, None};
 
 fn parse_exp(s: &str) -> Result<Value, ParserError> {
     let chars: Vec<char> = s.chars().collect();
@@ -92,20 +94,54 @@ fn t_all() {
     debug_(lr);
 }
 
-fn t_bind() {
-    let code = "\
-    (bindl ((a 1)\
-            (b a))\
-        b)\
-     ";
+fn run_code(code: &str) {
+    let mut vbs = eb();
     let res = parse_all(code).unwrap().iter()
         .map(|e| {
-            eval(&e, &mut eb(), &mut vec![])
+            eval(&e, &mut vbs, &mut vec![])
         })
         .last();
     debug_(res);
 }
 
+fn t_bind() {
+    run_code("\
+    (bindl ((a 1)\
+            (b a))\
+        b)\
+     ");
+}
+
+fn t_loop(i: usize) {
+    run_code(format!("\
+    (set n {})
+    (loop ((i 1)
+           (res 0))
+      (if (= i n)
+        res
+        (recur (+ i 1) (+ res i))))
+    ", i).as_str())
+}
+
 fn main() {
-    t_bind();
+    f();
+    // let tm = SystemTime::now();
+    // let mut vbs = eb();
+    // let mut lbs_s = vec![ArrayMap::new(10)];
+    // for i in 0..=std::env::args().nth(1).unwrap().parse().unwrap() {
+    //     Set(LList::empty().cons(Int(1000000)).cons(Symbol("a".to_string())), &mut vbs, &mut lbs_s);
+    // }
+    // match tm.elapsed() {
+    //     Err(e) => {},
+    //     Ok(s) => debug_(s.as_micros())
+    // };
+}
+
+fn f() {
+    let tm = SystemTime::now();
+    t_loop(std::env::args().nth(1).unwrap().parse().unwrap());
+    match tm.elapsed() {
+        Err(e) => {},
+        Ok(s) => debug_(s.as_millis())
+    };
 }

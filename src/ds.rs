@@ -12,9 +12,11 @@ use std::borrow::ToOwned;
 
 
 use std::clone::Clone;
+use std::prelude::v1::{Vec, PartialEq};
 
 pub type ft = fn(LList) -> std::result::Result<Value, String>;
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Symbol(String),
     Bool(bool),
@@ -25,6 +27,7 @@ pub enum Value {
     Lambda(ft),
     Macro(ft),
     Undefined,
+    RecurFlag(LList)
 }
 impl Default for Value {
     fn default() -> Self {
@@ -42,11 +45,12 @@ impl Display for Value {
             Value::Undefined => f.write_str("null"),
             Value::Lambda(_F) => f.write_str("<function>"),
             Value::Macro(_F) => f.write_str("<function>"),
+            Value::RecurFlag(l) => f.write_str("<recur>")
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LList(Option<Arc<(Value, LList)>>);
 pub(crate) static EMPTY : LList = LList(None);
 impl LList {
@@ -149,5 +153,25 @@ impl Display for LList {
         s.push(')');
         f.write_str(&*s);
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct ArrayMap<K: PartialEq, V>(Vec<(K, V)>);
+
+impl<K: PartialEq, V> ArrayMap<K, V> {
+    pub fn new(n: usize) -> Self {
+        ArrayMap(Vec::with_capacity(n))
+    }
+
+    pub fn get(&self, k: &K) -> Option<&V> {
+        self.0.iter().find(|(kk, v)| kk == k).map(|(k, v)| v)
+    }
+
+    pub fn set(&mut self, k: K, v: V) {
+        match self.0.iter().zip(0..1000).find(|((kk, _), _)| *kk == k) {
+            None => self.0.push((k, v)),
+            Some(((_, _), idx)) => { std::mem::replace(&mut self.0[idx], (k, v)); }
+        };
     }
 }
