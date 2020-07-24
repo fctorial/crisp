@@ -108,12 +108,25 @@ pub fn parse_list(toks: &mut Peekable<IntoIter<Token>>) -> Result<Value, String>
 }
 
 fn parse_word(w : String) -> Result<Value, String> {
+    use Value::*;
     match w.chars().next().unwrap() {
         '0'..='9' => {
+            if w.contains('.') {
+                match w.parse().map(|f| Float(f)) {
+                    Ok(f) => return Ok(f),
+                    _ => {}
+                }
+            }
             w.parse()
-                .map(|i| Value::Int(i))
+                .map(|i| Int(i))
                 .map_err(|e| e.to_string())
         },
-        _ => Ok(Value::Symbol(w))
+        _ => {
+            match w.parse().map(|b| Bool(b)) {
+                Ok(b) => return Ok(b),
+                _ => {}
+            }
+            return Ok(Symbol(w))
+        }
     }
 }

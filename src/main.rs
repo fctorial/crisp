@@ -33,7 +33,7 @@ fn eb() -> Bindings {
     HashMap::new()
 }
 
-fn main() {
+fn t_vars() {
     let mut vbs = eb();
     let mut lbs1 = eb();
     let mut lbs2 = eb();
@@ -45,4 +45,18 @@ fn main() {
 
     let res = eval(&code, &mut vbs, &mut vec![]);
     debug_(res);
+}
+
+fn t_bool() {
+    let code = parse_code("\
+    (set b true)\
+    (if b 1 2)\
+    ");
+    let mut vbs = eb();
+    let res = eval(&code, &mut vbs, &mut vec![]);
+    debug_(vbs);
+}
+
+fn main() {
+    t_bool();
 }

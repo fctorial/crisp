@@ -17,6 +17,7 @@ pub type ft = fn(LList) -> std::result::Result<Value, String>;
 #[derive(Clone, Debug)]
 pub enum Value {
     Symbol(String),
+    Bool(bool),
     Int(i128),
     Float(f64),
     List(LList),
@@ -34,6 +35,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Value::Symbol(name) => f.write_str(format!("{}", name).as_str()),
+            Value::Bool(b) => f.write_str(if *b {"true"} else {"false"}),
             Value::List(v) => (v as &Display).fmt(f),
             Value::Int(v) => (v as &Display).fmt(f),
             Value::Float(v) => (v as &Display).fmt(f),
