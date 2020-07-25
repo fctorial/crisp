@@ -1,5 +1,7 @@
 #![feature(assoc_int_consts)]
 #![feature(core_intrinsics)]
+#![feature(fn_traits)]
+#![feature(unboxed_closures)]
 #![allow(warnings)]
 
 mod ds;
@@ -22,6 +24,9 @@ use std::result::Result::*;
 
 use std::result::Result;
 use std::time::SystemTime;
+use std::string::{ToString, String};
+use std::ops::Fn;
+use std::boxed::Box;
 
 
 fn parse_exp(s: &str) -> Result<Value, ParserError> {
@@ -54,6 +59,7 @@ fn eb() -> Bindings {
 }
 
 fn run_code(code: &str) {
+    let tm = SystemTime::now();
     let mut vbs = eb();
     let res = parse_all(code).unwrap().iter()
         .map(|e| {
@@ -61,6 +67,10 @@ fn run_code(code: &str) {
         })
         .last();
     debug_(res);
+    match tm.elapsed() {
+        Err(_e) => {},
+        Ok(s) => debug_(s.as_millis())
+    };
 }
 
 fn t_bind() {
@@ -82,18 +92,18 @@ fn t_loop(i: usize) {
     ", i).as_str())
 }
 
+fn t_lambda(n: usize) {
+    run_code(format!("\
+    (set fib (lambda (n)
+                (if (< n 2)
+                  n
+                  (+ (fib (- n 1))
+                     (fib (- n 2))))))
+    (fib {})", n).as_str());
+}
+
 fn main() {
-    f();
-    // let tm = SystemTime::now();
-    // let mut vbs = eb();
-    // let mut lbs_s = vec![ArrayMap::new(10)];
-    // for i in 0..=std::env::args().nth(1).unwrap().parse().unwrap() {
-    //     Set(LList::empty().cons(Int(1000000)).cons(Symbol("a".to_string())), &mut vbs, &mut lbs_s);
-    // }
-    // match tm.elapsed() {
-    //     Err(e) => {},
-    //     Ok(s) => debug_(s.as_micros())
-    // };
+    t_lambda(std::env::args().nth(1).unwrap().parse().unwrap());
 }
 
 fn f() {
@@ -104,3 +114,4 @@ fn f() {
         Ok(s) => debug_(s.as_millis())
     };
 }
+

@@ -132,7 +132,7 @@ pub fn intern(w: String) -> Value {
 }
 
 lazy_static! {
-    static ref SYMBOLS: RwLock<Vec<String>> = RwLock::new(vec![
+    pub static ref SYMBOLS: RwLock<Vec<String>> = RwLock::new(vec![
         "set".to_string(),
         "bindl".to_string(),
         "lambda".to_string(),

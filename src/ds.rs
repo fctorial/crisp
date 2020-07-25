@@ -1,7 +1,7 @@
 use std::option::Option;
 
 use std::option::Option::*;
-use std::string::{String};
+use std::string::{String, ToString};
 use std::fmt::{Debug, Formatter, Write, Result, Display};
 use std::result::Result::Ok;
 use std::iter::{Iterator, FromIterator, IntoIterator};
@@ -13,8 +13,12 @@ use std::borrow::ToOwned;
 
 use std::clone::Clone;
 use std::prelude::v1::{Vec, PartialEq};
+use std::ops::{Fn, FnMut, FnOnce};
+use crate::vm::{Bindings, LBindings, eval, err};
+use crate::ds::Value::{Symbol, List};
+use crate::parser::intern;
 
-pub type ft = fn(LList) -> std::result::Result<Value, String>;
+pub type ft = dyn FnOnce(LList, &mut Bindings) -> std::result::Result<Value, String>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -24,8 +28,8 @@ pub enum Value {
     Float(f64),
     List(LList),
     ////
-    Lambda(ft),
-    Macro(ft),
+    Lambda(Executable),
+    Macro(Executable),
     Undefined,
     RecurFlag(LList),
 }
@@ -178,5 +182,45 @@ impl<K: PartialEq, V> ArrayMap<K, V> {
 impl<K: Clone + PartialEq, V: Clone> Clone for ArrayMap<K, V> {
     fn clone(&self) -> Self {
         ArrayMap(self.0.clone())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Executable {
+    pub params: Vec<usize>,
+    pub body: LList,
+    pub lbs_base: LBindings,
+}
+
+impl FnOnce<(Vec<Value>, &mut Bindings)> for Executable {
+    type Output = std::result::Result<Value, String>;
+
+    extern "rust-call" fn call_once(self, args: (Vec<Value>, &mut Bindings)) -> Self::Output {
+        unimplemented!()
+    }
+}
+
+impl FnMut<(Vec<Value>, &mut Bindings)> for Executable {
+    extern "rust-call" fn call_mut(&mut self, args: (Vec<Value>, &mut Bindings)) -> Self::Output {
+        unimplemented!()
+    }
+}
+
+impl Fn<(Vec<Value>, &mut Bindings)> for Executable {
+    extern "rust-call" fn call(&self, ps: (Vec<Value>, &mut Bindings)) -> Self::Output {
+        let mut frame: ArrayMap<usize, Value> = ArrayMap::new(self.params.iter().count());
+        let args = ps.0;
+        for (name, value) in self.params.iter().zip(args.iter()) {
+            frame.set(*name, value.clone());
+        }
+        let mut lbs = self.lbs_base.clone();
+        lbs.push(frame);
+        eval(&List(self.body.cons(intern("do".to_string()))), ps.1, &lbs)
+    }
+}
+
+impl PartialEq for Executable {
+    fn eq(&self, other: &Self) -> bool {
+        false
     }
 }
