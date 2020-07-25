@@ -12,38 +12,41 @@ use std::iter::{Iterator, IntoIterator};
 use std::clone::Clone;
 use std::prelude::v1::Vec;
 use rutils::{debug_};
+use crate::parser::intern;
 
-pub type Bindings = HashMap<String, Value>;
-pub type LBindings = Vec<ArrayMap<String, Value>>;
+pub type Bindings = HashMap<usize, Value>;
+pub type LBindings = Vec<ArrayMap<usize, Value>>;
 
 macro_rules! map (
     { $($key:expr => $value:expr),+ } => {
         {
             let mut m = ::std::collections::HashMap::new();
             $(
-                m.insert($key, $value as fn(LList, &mut Bindings, &mut LBindings) -> Result<Value, String>);
+                if let Symbol(idx) = $key {
+                    m.insert(idx, $value as fn(LList, &mut Bindings, &mut LBindings) -> Result<Value, String>);
+                }
             )+
             m
         }
      };
 );
 lazy_static! {
-     pub static ref sfs : HashMap<&'static str, fn(LList, &mut Bindings, &mut LBindings) -> Result<Value, String>> = map!{
-        "set" => Set,
-        "bindl" => BindL,
-        // "lambda" => Lambda,
-        // "macro" => Macro
-        "do" => Do,
-        "if" => If,
-        "loop" => Loop,
-        "recur" => Recur,
-        // "quote" => Quote,
-        // "read" => Read,
-        "p" => Print,
-        "+" => Plus,
-        "-" => Minus,
-        "=" => Equal,
-        "*" => Mult
+     pub static ref sfs : HashMap<usize, fn(LList, &mut Bindings, &mut LBindings) -> Result<Value, String>> = map!{
+        intern("set".to_string()) => Set,
+        intern("bindl".to_string()) => BindL,
+        // intern("lambda".to_string()) => Lambda,
+        // intern("macro".to_string()) => Macro
+        intern("do".to_string()) => Do,
+        intern("if".to_string()) => If,
+        intern("loop".to_string()) => Loop,
+        intern("recur".to_string()) => Recur,
+        // intern("quote".to_string()) => Quote,
+        // intern("read".to_string()) => Read,
+        intern("p".to_string()) => Print,
+        intern("+".to_string()) => Plus,
+        intern("-".to_string()) => Minus,
+        intern("=".to_string()) => Equal,
+        intern("*".to_string()) => Mult
     };
 }
 fn err<T>(s: &str) -> Result<T, String> {
@@ -141,13 +144,16 @@ fn Recur(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value
     Ok(RecurFlag(ress.into_iter().collect()))
 }
 
+lazy_static! {
+    static ref SYM_BINDL: Value = intern("bindl".to_string());
+}
 fn Loop(mut args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let bsv = args.first().unwrap();
     if let List(bs) = bsv {
         let bnames = bs.iter().map(|e| if let List(l) = e { l.first().unwrap() } else { panic!("") }).collect::<LList>();
         let n = bs.iter().count();
         loop {
-            match eval(&List(args.cons(Symbol("bindl".to_string()))), vbs, lbs_s) {
+            match eval(&List(args.cons(SYM_BINDL.clone())), vbs, lbs_s) {
                 Ok(res) => match res {
                     RecurFlag(bs) => {
                         if bs.iter().count() != n {
@@ -180,11 +186,11 @@ fn BindL(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value
                     .collect::<Vec<Value>>();
                 let sym = &vs[0];
                 let value_exp = &vs[1];
-                if let Symbol(_) = &sym {
+                if let Symbol(idx) = &sym {
                     match eval(&value_exp, vbs, lbs_s) {
                         Ok(value) => {
                             let mut lbs = lbs_s.pop().unwrap();
-                            lbs.set(sym.to_string(), value);
+                            lbs.set(*idx, value);
                             lbs_s.push(lbs);
                         }
                         Err(s) => return Err(s),
@@ -237,9 +243,9 @@ pub fn Set(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Val
     if v.len() != 2 {
         err("\"set\" needs two arguments")
     } else {
-        if let Symbol(w) = &v[0] {
+        if let Symbol(idx) = &v[0] {
             let value = eval(&v[1], vbs, lbs_s)?;
-            vbs.insert(w.to_string(), value.clone());
+            vbs.insert(*idx, value.clone());
             Ok(value)
         } else {
             err("first arg to \"set\" must be a symbol")
@@ -316,7 +322,7 @@ pub fn execute(exp: &LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result
     match exp.first() {
         None => Ok(List(LList::empty())),
         Some(f) => match &f {
-            Value::Symbol(s) => match sfs.get(s.as_str()) {
+            Value::Symbol(idx) => match sfs.get(idx) {
                 Some(f) => f(exp.rest_t(), vbs, lbs_s),
                 None => {
                     eval(&f, vbs, lbs_s)

@@ -12,15 +12,17 @@ use std::slice::Iter;
 use std::borrow::ToOwned;
 use std::vec::IntoIter;
 use crate::parser::ParserError::*;
+use std::sync::{Mutex, RwLock};
+use lazy_static::lazy_static;
 
 #[derive(Debug)]
 pub enum Token {
     PAREN1,
     PAREN2,
-    WORD(String)
+    WORD(String),
 }
 
-pub fn toks(chars : &mut Peekable<Iter<char>>) -> Vec<Token> {
+pub fn toks(chars: &mut Peekable<Iter<char>>) -> Vec<Token> {
     let mut res = vec![];
     loop {
         skip_whitespace(chars);
@@ -116,6 +118,39 @@ pub fn parse_list(toks: &mut IntoIter<Token>) -> Result<Value, ParserError> {
     Ok(List(values.iter().rev().fold(LList::empty(), |l, e| l.cons(e.to_owned()))))
 }
 
+pub fn intern(w: String) -> Value {
+    let mut lock = SYMBOLS.write().unwrap();
+    Symbol(match lock.iter()
+        .zip(0..=usize::MAX)
+        .find(|(ww, idx)| **ww == w) {
+        None => {
+            lock.push(w);
+            lock.len() - 1
+        },
+        Some((_, idx)) => idx
+    })
+}
+
+lazy_static! {
+    static ref SYMBOLS: RwLock<Vec<String>> = RwLock::new(vec![
+        "set".to_string(),
+        "bindl".to_string(),
+        "lambda".to_string(),
+        "macro".to_string(),
+        "do".to_string(),
+        "if".to_string(),
+        "loop".to_string(),
+        "recur".to_string(),
+        "quote".to_string(),
+        "read".to_string(),
+        "p".to_string(),
+        "+".to_string(),
+        "-".to_string(),
+        "=".to_string(),
+        "*".to_string()
+    ]);
+}
+
 fn parse_word(w: String) -> Result<Value, ParserError> {
     use Value::*;
     match w.chars().next().unwrap() {
@@ -135,7 +170,7 @@ fn parse_word(w: String) -> Result<Value, ParserError> {
                 Ok(b) => return Ok(b),
                 _ => {}
             }
-            return Ok(Symbol(w));
+            unsafe { return Ok(intern(w)); };
         }
     }
 }

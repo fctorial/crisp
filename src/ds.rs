@@ -18,7 +18,7 @@ pub type ft = fn(LList) -> std::result::Result<Value, String>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
-    Symbol(String),
+    Symbol(usize),
     Bool(bool),
     Int(i64),
     Float(f64),
@@ -27,7 +27,7 @@ pub enum Value {
     Lambda(ft),
     Macro(ft),
     Undefined,
-    RecurFlag(LList)
+    RecurFlag(LList),
 }
 impl Default for Value {
     fn default() -> Self {
@@ -37,8 +37,8 @@ impl Default for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
-            Value::Symbol(name) => f.write_str(format!("{}", name).as_str()),
-            Value::Bool(b) => f.write_str(if *b {"true"} else {"false"}),
+            Value::Symbol(idx) => f.write_str(format!("{}", idx).as_str()),
+            Value::Bool(b) => f.write_str(if *b { "true" } else { "false" }),
             Value::List(v) => (v as &dyn Display).fmt(f),
             Value::Int(v) => (v as &dyn Display).fmt(f),
             Value::Float(v) => (v as &dyn Display).fmt(f),

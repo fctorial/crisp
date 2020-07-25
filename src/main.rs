@@ -1,6 +1,6 @@
 #![feature(assoc_int_consts)]
 #![feature(core_intrinsics)]
-// #![allow(warnings)]
+#![allow(warnings)]
 
 mod ds;
 mod vm;
