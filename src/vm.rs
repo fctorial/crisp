@@ -11,25 +11,24 @@ use crate::ds::Value::{Symbol, List, Macro, Lambda, Bool, Int, RecurFlag, Undefi
 use std::iter::{Iterator, IntoIterator};
 use std::clone::Clone;
 use std::prelude::v1::Vec;
-use rutils::{debug_, debug};
-use std::time::SystemTime;
+use rutils::{debug_};
 
 pub type Bindings = HashMap<String, Value>;
-pub type LBindings = ArrayMap<String, Value>;
+pub type LBindings = Vec<ArrayMap<String, Value>>;
 
 macro_rules! map (
     { $($key:expr => $value:expr),+ } => {
         {
             let mut m = ::std::collections::HashMap::new();
             $(
-                m.insert($key, $value as fn(LList, &mut Bindings, &mut Vec<LBindings>) -> Result<Value, String>);
+                m.insert($key, $value as fn(LList, &mut Bindings, &mut LBindings) -> Result<Value, String>);
             )+
             m
         }
      };
 );
 lazy_static! {
-     pub static ref sfs : HashMap<&'static str, fn(LList, &mut Bindings, &mut Vec<LBindings>) -> Result<Value, String>> = map!{
+     pub static ref sfs : HashMap<&'static str, fn(LList, &mut Bindings, &mut LBindings) -> Result<Value, String>> = map!{
         "set" => Set,
         "bindl" => BindL,
         // "lambda" => Lambda,
@@ -51,8 +50,8 @@ fn err<T>(s: &str) -> Result<T, String> {
     Err(s.to_string())
 }
 
-// fn _t(args: LList, vbs : &mut Bindings, lbs_s : &mut Vec<LBindings>) -> Result<Value, String> {}
-fn Do(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+// fn _t(args: LList, vbs : &mut Bindings, lbs_s : &mut LBindings) -> Result<Value, String> {}
+fn Do(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let mut last = Undefined;
     for exp in args.iter() {
         match eval(&exp, vbs, lbs_s) {
@@ -67,7 +66,7 @@ fn Do(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Val
     }
 }
 
-fn Plus(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Plus(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let mut res = 0;
     for e in args.iter() {
         match eval(&e, vbs, lbs_s) {
@@ -83,7 +82,7 @@ fn Plus(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<V
     Ok(Int(res))
 }
 
-fn Equal(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Equal(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let val = match eval(&args.first().unwrap(), vbs, lbs_s) {
         Err(s) => return Err(s),
         Ok(v) => v
@@ -99,7 +98,7 @@ fn Equal(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<
     Ok(Bool(true))
 }
 
-fn Minus(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Minus(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let mut res = 0;
     for e in args.iter() {
         match eval(&e, vbs, lbs_s) {
@@ -115,7 +114,7 @@ fn Minus(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<
     Ok(Int(res))
 }
 
-fn Mult(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Mult(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let mut res = 1;
     for e in args.iter() {
         match eval(&e, vbs, lbs_s) {
@@ -131,7 +130,7 @@ fn Mult(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<V
     Ok(Int(res))
 }
 
-fn Recur(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Recur(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let mut ress = vec![];
     for res in args.iter().map(|exp| eval(&exp, vbs, lbs_s)) {
         match res {
@@ -142,7 +141,7 @@ fn Recur(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<
     Ok(RecurFlag(ress.into_iter().collect()))
 }
 
-fn Loop(mut args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Loop(mut args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let bsv = args.first().unwrap();
     if let List(bs) = bsv {
         let bnames = bs.iter().map(|e| if let List(l) = e { l.first().unwrap() } else { panic!("") }).collect::<LList>();
@@ -167,7 +166,7 @@ fn Loop(mut args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Resu
     loop {}
 }
 
-fn BindL(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn BindL(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     if let Some(List(bs)) = args.first() {
         let body = args.rest_t();
         if let None = body.rest() {
@@ -211,7 +210,7 @@ fn BindL(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<
     }
 }
 
-fn If(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn If(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let v = args.iter()
         .take(3)
         .collect::<Vec<Value>>();
@@ -226,12 +225,12 @@ fn If(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Val
     }
 }
 
-fn CLambda(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
-    if let Some(largs) = args.first() {} else {}
+fn CLambda(args: LList, _vbs: &mut Bindings, _lbs_s: &mut LBindings) -> Result<Value, String> {
+    if let Some(_largs) = args.first() {} else {}
     Err("impl".to_string())
 }
 
-pub fn Set(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+pub fn Set(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let v = args.iter()
         .take(2)
         .collect::<Vec<Value>>();
@@ -292,7 +291,7 @@ pub fn Set(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Resul
 //     Ok(Null)
 // }
 
-pub fn eval(v: &Value, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+pub fn eval(v: &Value, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     match v {
         Symbol(w) => {
             let local = lbs_s.iter().rev()
@@ -313,7 +312,7 @@ pub fn eval(v: &Value, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result
     }
 }
 
-pub fn execute(exp: &LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+pub fn execute(exp: &LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     match exp.first() {
         None => Ok(List(LList::empty())),
         Some(f) => match &f {
@@ -351,7 +350,7 @@ pub fn execute(exp: &LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> R
     }
 }
 
-fn Print(args: LList, vbs: &mut Bindings, lbs_s: &mut Vec<LBindings>) -> Result<Value, String> {
+fn Print(args: LList, vbs: &mut Bindings, lbs_s: &mut LBindings) -> Result<Value, String> {
     let exp = args.first().unwrap();
     let res = eval(&exp, vbs, lbs_s)?;
     println!("{}", res);

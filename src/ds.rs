@@ -45,94 +45,93 @@ impl Display for Value {
             Value::Undefined => f.write_str("null"),
             Value::Lambda(_F) => f.write_str("<function>"),
             Value::Macro(_F) => f.write_str("<function>"),
-            Value::RecurFlag(l) => f.write_str("<recur>")
+            Value::RecurFlag(_l) => f.write_str("<recur>")
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct LList(Option<Arc<(Value, LList)>>);
-pub(crate) static EMPTY : LList = LList(None);
-impl LList {
-    pub fn empty() -> LList {
-        LList(None)
+pub struct _LList<T: Clone>(Option<Arc<(T, _LList<T>)>>);
+
+pub type LList = _LList<Value>;
+
+impl<T: Clone> _LList<T> {
+    pub fn empty() -> Self {
+        _LList(None)
     }
 
-    pub fn _empty() -> &'static LList {
-        &EMPTY
-    }
-
-    pub fn cons(&self, v: Value) -> LList {
-        LList(Some(Arc::new((v, match &self.0 {
-            None => LList::empty(),
-            Some(ptr) => LList(Some(ptr.clone())),
+    pub fn cons(&self, v: T) -> Self {
+        _LList(Some(Arc::new((v, match &self.0 {
+            None => _LList::empty(),
+            Some(ptr) => _LList(Some(ptr.clone())),
         }))))
     }
 
-    pub fn iter(&self) -> LIterator {
+    pub fn iter(&self) -> LIterator<T> {
         LIterator(self.clone())
     }
 
-    pub fn first(&self) -> Option<Value> {
+    pub fn first(&self) -> Option<T> {
         match &self.0 {
             None => None,
             Some(ptr) => Some(ptr.0.clone()),
         }
     }
 
-    pub fn rest(&self) -> Option<LList> {
+    pub fn rest(&self) -> Option<Self> {
         match &self.0 {
             None => None,
             Some(ptr) => Some(ptr.1.clone()),
         }
     }
 
-    pub fn rest_t(&self) -> LList {
+    pub fn rest_t(&self) -> Self {
         match &self.rest() {
-            None => LList::empty(),
+            None => _LList::empty(),
             Some(ptr) => ptr.to_owned(),
         }
     }
 
-    pub fn nth(&self, i: usize) -> Option<Value> {
+    pub fn nth(&self, i: usize) -> Option<T> {
         if i == 0 {
             self.0.as_ref().map(|ptr| ptr.0.clone())
         } else {
             match self.rest() {
                 None => None,
-                Some(l) => l.nth(i-1)
+                Some(l) => l.nth(i - 1)
             }
         }
     }
 }
 
-impl Clone for LList {
+impl<T: Clone> Clone for _LList<T> {
     fn clone(&self) -> Self {
         match &self.0 {
-            None => LList(None),
-            Some(ptr) => LList(Some(ptr.clone())),
+            None => _LList(None),
+            Some(ptr) => _LList(Some(ptr.clone())),
         }
     }
 }
 
-impl FromIterator<Value> for LList {
-    fn from_iter<T: IntoIterator<Item=Value>>(iter: T) -> Self {
+impl<T: Clone> FromIterator<T> for _LList<T> {
+    fn from_iter<U: IntoIterator<Item=T>>(iter: U) -> Self {
         let mut values = vec![];
         for v in iter {
             values.push(v);
         }
-        values.iter().rev().fold(LList::empty(), |l, e| l.cons(e.to_owned()))
+        values.iter().rev().fold(_LList::empty(), |l, e| l.cons(e.to_owned()))
     }
 }
 
-pub struct LIterator(LList);
-impl Iterator for LIterator {
-    type Item = Value;
+pub struct LIterator<T: Clone>(_LList<T>);
 
-    fn next(&mut self) -> Option<Value> {
+impl<T: Clone> Iterator for LIterator<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
         match &self.0 {
-            LList(None) => None,
-            LList(Some(ptr)) => {
+            _LList(None) => None,
+            _LList(Some(ptr)) => {
                 let res = ptr.0.clone();
                 self.0 = ptr.1.clone();
                 Some(res)
@@ -141,7 +140,7 @@ impl Iterator for LIterator {
     }
 }
 
-impl Display for LList {
+impl<T: Clone + Display> Display for _LList<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut s = String::new();
         s.push('(');
@@ -165,7 +164,7 @@ impl<K: PartialEq, V> ArrayMap<K, V> {
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {
-        self.0.iter().find(|(kk, v)| kk == k).map(|(k, v)| v)
+        self.0.iter().find(|(kk, _v)| kk == k).map(|(_k, v)| v)
     }
 
     pub fn set(&mut self, k: K, v: V) {
@@ -173,5 +172,11 @@ impl<K: PartialEq, V> ArrayMap<K, V> {
             None => self.0.push((k, v)),
             Some(((_, _), idx)) => { std::mem::replace(&mut self.0[idx], (k, v)); }
         };
+    }
+}
+
+impl<K: Clone + PartialEq, V: Clone> Clone for ArrayMap<K, V> {
+    fn clone(&self) -> Self {
+        ArrayMap(self.0.clone())
     }
 }
